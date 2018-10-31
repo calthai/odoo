@@ -5,7 +5,7 @@ from openpyxl import writer
 
 from odoo import models, fields, api, _
 from datetime import datetime
-from StringIO import StringIO
+from io import StringIO
 import xlwt
 import time
 import xlsxwriter
