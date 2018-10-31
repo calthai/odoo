@@ -11,18 +11,18 @@ class stock_picking(models.Model):
 
     @api.multi
     def gen_lot(self):
-        print "GEN LOT"
+        # print "GEN LOT"
         if self.picking_type_code == 'incoming':
-            print "INCOMMING"
+            # print "INCOMMING"
             for product in self.move_lines:
-                print '=========1'
+                # print '=========1'
                 if product.show_details_visible:
-                    print '=========2'
+                    # print '=========2'
                     qty_done = product.product_uom_qty
                     product.move_line_ids.unlink()
 
                     for x in range(0, int(qty_done), 1):
-                        print '====2222'
+                        # print '====2222'
                         lot_name = product.product_id.sequence_id.next_by_id()
                         lot_val = {
                             'product_id': product.product_id.id,
