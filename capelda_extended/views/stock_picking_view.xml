@@ -1,0 +1,36 @@
+<odoo>
+    <record id="stock_picking_view_form_itaas_inherit" model="ir.ui.view">
+        <field name="name">stock.picking.view.form.itaas</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <field name="move_lines" position="attributes">
+                <attribute name="attrs">{'readonly': False}</attribute>
+            </field>
+            <field name="origin" position="attributes">
+                <attribute name="attrs">{'required': [('picking_type_code', '=', 'outgoing')]}</attribute>
+            </field>
+            <field name="origin" position="after">
+                <field name="is_selected" invisible="1"/>
+            </field>
+            <xpath expr="//sheet/notebook/page/field[2]/tree/field[@name='location_dest_id']" position="attributes">
+                <attribute name="invisible">False</attribute>
+            </xpath>
+            <xpath expr="//sheet/notebook/page/field[2]/tree/field[@name='location_dest_id']" position="after">
+                <field name="new_location_id" domain = "[('is_check_avilable','=', True),('usage','=','internal')]"/>
+            </xpath>
+            <xpath expr="//sheet/notebook/page/field[1]/tree/field[@name='location_id']" position="attributes">
+                <attribute name="domain">[]</attribute>
+            </xpath>
+            <xpath expr="//sheet/notebook/page/field[1]/tree/field[@name='location_dest_id']" position="attributes">
+                <attribute name="domain">[]</attribute>
+            </xpath>
+            <button name="do_print_picking" position="before">
+                <button name="gen_lot" string="Gen Serial" type="object"/>
+            </button>
+            <button name="action_toggle_is_locked" position="after">
+                <button name="action_copy_receive" string="COPY TO INTERNAL"  type="object" class="oe_highlight" attrs="{'invisible': [('picking_type_code', '!=', 'incoming'),('state','!=','done')]}"/>
+            </button>
+        </field>
+    </record>
+</odoo>
