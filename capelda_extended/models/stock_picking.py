@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from atom import data
+# from atom import data
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 from odoo.tools.float_utils import float_compare, float_is_zero
