@@ -5,7 +5,7 @@
         <field name="inherit_id" ref="product.product_template_tree_view"/>
         <field name="arch" type="xml">
             <field name="virtual_available" position="after">
-                <field name="text_remark"/>
+                <field name="stock_info_text"/>
             </field>
             <!--<field name="default_code" position="after">-->
                 <!--<button name="button_gen_sequence" type="object" string="Gen Sequence" class="btn-link" attrs="{'invisible': [('tracking', '!=', 'serial')]}"/>-->
