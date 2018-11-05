@@ -24,7 +24,7 @@ class product_template(models.Model):
 
     @api.multi
     def button_gen_sequence_all(self):
-        for product in self:
+        for product in self.env['product.template'].search([]):
             product.button_gen_sequence()
 
 

@@ -8,47 +8,72 @@ class stock_picking(models.Model):
     _inherit = 'stock.picking'
 
     is_selected = fields.Boolean(string='Is Selected', default=False)
+    is_checked = fields.Boolean(string='Is Checked', default=False)
+    is_gen_lot = fields.Boolean(string='Is Gen Lot', default=False)
+
+    @api.multi
+    def _compute_show_check_availability(self):
+        # print('_compute_show_check_availability====1')
+        for picking in self:
+            has_moves_to_reserve = any(
+                move.state in ('waiting', 'confirmed', 'partially_available') and
+                float_compare(move.product_uom_qty, 0, precision_rounding=move.product_uom.rounding)
+                for move in picking.move_lines
+            )
+            # print(has_moves_to_reserve)
+            # print(picking.is_checked)
+            if picking.is_checked:
+                # print('==================1')
+                picking.show_check_availability = False
+            else:
+                # print('==================2')
+                picking.show_check_availability = picking.is_locked and picking.state in (
+                'confirmed', 'waiting', 'assigned') and has_moves_to_reserve
 
     @api.multi
     def gen_lot(self):
         # print "GEN LOT"
         if self.picking_type_code == 'incoming':
             # print "INCOMMING"
-            for product in self.move_lines:
-                # print '=========1'
-                if product.show_details_visible:
-                    # print '=========2'
-                    qty_done = product.product_uom_qty
-                    product.move_line_ids.unlink()
+            if not self.is_gen_lot:
+                for product in self.move_lines:
+                    # print '=========1'
+                    if product.show_details_visible:
+                        # print '=========2'
+                        qty_done = product.product_uom_qty
+                        product.move_line_ids.unlink()
 
-                    for x in range(0, int(qty_done), 1):
-                        # print '====2222'
-                        lot_name = product.product_id.sequence_id.next_by_id()
-                        lot_val = {
-                            'product_id': product.product_id.id,
-                            'name': lot_name,
-                            'product_qty': 1,
-                        }
-                        lot_id = self.env['stock.production.lot'].search(
-                            [('product_id', '=', product.product_id.id), ('name', '=', lot_name)], limit=1)
-                        if not lot_id:
-                            lot_id = self.env['stock.production.lot'].create(lot_val)
+                        for x in range(0, int(qty_done), 1):
+                            # print '====2222'
+                            lot_name = product.product_id.sequence_id.next_by_id()
+                            lot_val = {
+                                'product_id': product.product_id.id,
+                                'name': lot_name,
+                                'product_qty': 1,
+                            }
+                            lot_id = self.env['stock.production.lot'].search(
+                                [('product_id', '=', product.product_id.id), ('name', '=', lot_name)], limit=1)
+                            if not lot_id:
+                                lot_id = self.env['stock.production.lot'].create(lot_val)
 
-                        val = {
-                            'picking_id': self.id,
-                            'move_id': product.id,
-                            'product_id': product.product_id.id,
-                            'product_uom_id': product.product_uom.id,
-                            'location_id': product.location_id.id,
-                            'location_dest_id': product.location_dest_id.id,
-                            'qty_done': 1,
-                            'lot_id': lot_id.id,
-                            'lot_name': lot_id.name,
-                        }
-                        # print '==================='
-                        # print val
-                        self.env['stock.move.line'].create(val)
+                            val = {
+                                'picking_id': self.id,
+                                'move_id': product.id,
+                                'product_id': product.product_id.id,
+                                'product_uom_id': product.product_uom.id,
+                                'location_id': product.location_id.id,
+                                'location_dest_id': product.location_dest_id.id,
+                                'qty_done': 1,
+                                'lot_id': lot_id.id,
+                                'lot_name': lot_id.name,
+                            }
+                            # print '==================='
+                            # print val
+                            self.env['stock.move.line'].create(val)
+            else:
+                raise UserError(_('You have already pressed this button Gen Serial.'))
 
+            self.is_gen_lot = True
 
     @api.multi
     def button_validate(self):
@@ -150,6 +175,7 @@ class stock_picking(models.Model):
             location_id = self.location_dest_id.id
             location_dest_id = self.location_dest_id.id
             picking_type_id = picking_type_ids.id
+            # show_check_availability  = False
 
             picking_obj = picking_obj.create({
                 # 'name': self.env['ir.sequence'].next_by_code('stock.picking') or '/',
@@ -159,6 +185,8 @@ class stock_picking(models.Model):
                 'location_id': location_id,
                 'location_dest_id': location_dest_id,
                 'picking_type_id': picking_type_id,
+                'is_checked': True,
+                # 'show_check_availability': show_check_availability,
             })
 
             # if picking_obj.move_lines:
@@ -191,7 +219,7 @@ class stock_picking(models.Model):
                 # move_line.unlink()
                 vals = {
                     # 'name': self.env['ir.sequence'].next_by_code('stock.picking') or '/',
-                    'name': picking_type_ids.sequence_id.next_by_id(),
+                    'name': picking_type_ids.name,
                     'picking_id': move_line.picking_id.id,
                     'product_id': move_line.product_id.id,
                     'location_id': move_line.location_dest_id.id,
@@ -200,8 +228,10 @@ class stock_picking(models.Model):
                     'lot_name': move_line.lot_id.name,
                     'qty_done': move_line.qty_done,
                     'product_uom_id': move_line.product_uom_id.id,
+                    'package_id': move_line.result_package_id.id,
+                    'result_package_id': move_line.result_package_id.id,
                     # 'lots_visible': True,
-                    'has_tracking': True,
+                    # 'has_tracking': True,
                 }
 
                 picking_obj.write({'move_line_ids': [(0, 0, vals)]})

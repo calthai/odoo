@@ -12,6 +12,8 @@
             </field>
             <field name="origin" position="after">
                 <field name="is_selected" invisible="1"/>
+                <field name="is_checked" invisible="1"/>
+                <field name="is_gen_lot" invisible="1"/>
             </field>
             <xpath expr="//sheet/notebook/page/field[2]/tree/field[@name='location_dest_id']" position="attributes">
                 <attribute name="invisible">False</attribute>
@@ -31,6 +33,9 @@
             <button name="action_toggle_is_locked" position="after">
                 <button name="action_copy_receive" string="COPY TO INTERNAL"  type="object" class="oe_highlight" attrs="{'invisible': [('picking_type_code', '!=', 'incoming'),('state','!=','done')]}"/>
             </button>
+            <xpath expr="//sheet/notebook/page[1]" position="attributes">
+                <attribute name="attrs">{}</attribute>
+            </xpath>
         </field>
     </record>
 </odoo>
