@@ -92,7 +92,7 @@ class product_template(models.Model):
                     for qs in quant_s:
                         remark += str(qs['location_id'])
                         remark += ' = '
-                        remark += str(qs['quantity'])
+                        remark += str(int(qs['quantity']))
                         remark += ', '
 
                     # print (remark)

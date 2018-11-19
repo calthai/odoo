@@ -35,45 +35,45 @@ class stock_picking(models.Model):
         # print "GEN LOT"
         if self.picking_type_code == 'incoming':
             # print "INCOMMING"
-            if not self.is_gen_lot:
-                for product in self.move_lines:
-                    # print '=========1'
-                    if product.show_details_visible:
-                        # print '=========2'
-                        qty_done = product.product_uom_qty
-                        product.move_line_ids.unlink()
+            # if not self.is_gen_lot:
+            for product in self.move_lines:
+                # print '=========1'
+                if not product.quantity_done:
+                    # print '=========2'
+                    qty_done = product.product_uom_qty
+                    product.move_line_ids.unlink()
 
-                        for x in range(0, int(qty_done), 1):
-                            # print '====2222'
-                            lot_name = product.product_id.sequence_id.next_by_id()
-                            lot_val = {
-                                'product_id': product.product_id.id,
-                                'name': lot_name,
-                                'product_qty': 1,
-                            }
-                            lot_id = self.env['stock.production.lot'].search(
-                                [('product_id', '=', product.product_id.id), ('name', '=', lot_name)], limit=1)
-                            if not lot_id:
-                                lot_id = self.env['stock.production.lot'].create(lot_val)
+                    for x in range(0, int(qty_done), 1):
+                        # print '====2222'
+                        lot_name = product.product_id.sequence_id.next_by_id()
+                        lot_val = {
+                            'product_id': product.product_id.id,
+                            'name': lot_name,
+                            'product_qty': 1,
+                        }
+                        lot_id = self.env['stock.production.lot'].search(
+                            [('product_id', '=', product.product_id.id), ('name', '=', lot_name)], limit=1)
+                        if not lot_id:
+                            lot_id = self.env['stock.production.lot'].create(lot_val)
 
-                            val = {
-                                'picking_id': self.id,
-                                'move_id': product.id,
-                                'product_id': product.product_id.id,
-                                'product_uom_id': product.product_uom.id,
-                                'location_id': product.location_id.id,
-                                'location_dest_id': product.location_dest_id.id,
-                                'qty_done': 1,
-                                'lot_id': lot_id.id,
-                                'lot_name': lot_id.name,
-                            }
-                            # print '==================='
-                            # print val
-                            self.env['stock.move.line'].create(val)
-            else:
-                raise UserError(_('You have already pressed this button Gen Serial.'))
-
-            self.is_gen_lot = True
+                        val = {
+                            'picking_id': self.id,
+                            'move_id': product.id,
+                            'product_id': product.product_id.id,
+                            'product_uom_id': product.product_uom.id,
+                            'location_id': product.location_id.id,
+                            'location_dest_id': product.location_dest_id.id,
+                            'qty_done': 1,
+                            'lot_id': lot_id.id,
+                            'lot_name': lot_id.name,
+                        }
+                        # print '==================='
+                        # print val
+                        self.env['stock.move.line'].create(val)
+            # else:
+            #     raise UserError(_('You have already pressed this button Gen Serial.'))
+            #
+            # self.is_gen_lot = True
 
     @api.multi
     def button_validate(self):
@@ -262,7 +262,7 @@ class stock_picking(models.Model):
             i = i+1
         return res
 
-    @api.onchange('move_line_ids','move_line_ids.result_package_id')
+    @api.onchange('move_line_ids','move_line_ids.location_dest_id')
     def _create_function_package(self):
         print ('_create_function_package')
         if self.move_line_ids:
@@ -273,25 +273,24 @@ class stock_picking(models.Model):
                     found = False
                     if i > 0:
                         for x in xrange(0, i):
-                            if line.location_id.id == line_s[x]['location_id']:
-
+                            if line.package_id.id == line_s[x]['package_id']:
                                 print ('=========1')
                                 found = True
-                                line.write({'result_package_id': line_s[x]['result_package_id'],
+                                line.write({'location_dest_id': line_s[x]['location_dest_id'],
                                             })
 
                         if not found:
                             print('=========2')
                             line_s[i] = {
-                                'location_id': line.location_id.id,
-                                'result_package_id': line.result_package_id.id,
+                                'package_id': line.package_id.id,
+                                'location_dest_id': line.location_dest_id.id,
                             }
                             i += 1
                     else:
                         print('=========3')
                         line_s[i] = {
-                            'location_id': line.location_id.id,
-                            'result_package_id': line.result_package_id.id,
+                            'package_id': line.package_id.id,
+                            'location_dest_id': line.location_dest_id.id,
                         }
                         i += 1
 
