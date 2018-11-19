@@ -18,6 +18,12 @@
             <xpath expr="//sheet/notebook/page/field[2]/tree/field[@name='location_dest_id']" position="attributes">
                 <attribute name="invisible">False</attribute>
             </xpath>
+            <xpath expr="//sheet/notebook/page/field[2]/tree/field[@name='location_id']" position="attributes">
+                <attribute name="invisible">False</attribute>
+            </xpath>
+            <xpath expr="//sheet/notebook/page/field[2]/tree/field[@name='product_uom_qty']" position="attributes">
+                <attribute name="attrs">{'readonly': False}</attribute>
+            </xpath>
             <xpath expr="//sheet/notebook/page/field[2]/tree/field[@name='location_dest_id']" position="after">
                 <field name="new_location_id" domain = "[('is_check_avilable','=', True),('usage','=','internal')]"/>
             </xpath>
@@ -35,6 +41,9 @@
             </button>
             <xpath expr="//sheet/notebook/page[1]" position="attributes">
                 <attribute name="attrs">{}</attribute>
+            </xpath>
+            <xpath expr="//sheet/notebook/page[1]/field[@name='move_line_ids']/tree/field[@name='result_package_id']" position="after">
+                <field name="auto_set"/>
             </xpath>
         </field>
     </record>

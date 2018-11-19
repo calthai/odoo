@@ -262,4 +262,51 @@ class stock_picking(models.Model):
             i = i+1
         return res
 
+    @api.onchange('move_line_ids','move_line_ids.result_package_id')
+    def _create_function_package(self):
+        print ('_create_function_package')
+        if self.move_line_ids:
+            line_s = {}
+            i = 0
+            for line in self.move_line_ids:
+                if line.auto_set:
+                    found = False
+                    if i > 0:
+                        for x in xrange(0, i):
+                            if line.location_id.id == line_s[x]['location_id']:
+
+                                print ('=========1')
+                                found = True
+                                line.write({'result_package_id': line_s[x]['result_package_id'],
+                                            })
+
+                        if not found:
+                            print('=========2')
+                            line_s[i] = {
+                                'location_id': line.location_id.id,
+                                'result_package_id': line.result_package_id.id,
+                            }
+                            i += 1
+                    else:
+                        print('=========3')
+                        line_s[i] = {
+                            'location_id': line.location_id.id,
+                            'result_package_id': line.result_package_id.id,
+                        }
+                        i += 1
+
+            line_s = [value for key, value in line_s.items()]
+            print (line_s)
+
+                    # if line.package_id.id not in package_ids:
+                    #     package_ids.append(line.package_id.id)
+                    #     if package_ids:
+                    #         for package in package_ids:
+                    #             if package == line.package_id.id:
+
+
+
+
+
+
 
