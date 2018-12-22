@@ -55,6 +55,8 @@ class stock_picking(models.Model):
 
                     for x in range(0, int(qty_done), 1):
                         # print '====2222'
+                        if not product.product_id.sequence_id:
+                            product.product_id.product_tmpl_id.button_gen_sequence()
                         lot_name = product.product_id.sequence_id.next_by_id()
                         lot_val = {
                             'product_id': product.product_id.id,
@@ -73,6 +75,7 @@ class stock_picking(models.Model):
                             'product_uom_id': product.product_uom.id,
                             'location_id': product.location_id.id,
                             'location_dest_id': product.location_dest_id.id,
+                            'product_uom_qty': 1,
                             'qty_done': 1,
                             'lot_id': lot_id.id,
                             'lot_name': lot_id.name,
@@ -82,6 +85,7 @@ class stock_picking(models.Model):
                         self.env['stock.move.line'].create(val)
 
             self.is_put_in_pack = True
+            self.action_assign()
             # else:
             #     raise UserError(_('You have already pressed this button Gen Serial.'))
             #
@@ -277,7 +281,7 @@ class stock_picking(models.Model):
     @api.model
     def create(self, vals):
         # print 'create=========1'
-        # print vals.get('move_lines')
+        # print (vals.get('move_lines'))
         if vals.get('move_lines'):
             # print self.move_lines
             location_dest_ids = []
@@ -285,6 +289,12 @@ class stock_picking(models.Model):
                 # print '========1'
                 if len(move) == 3:
                     location_dest_ids.append(move[2]['location_dest_id'])
+
+                if move[2]['product_uom_qty'] <= 0:
+                    raise UserError(_('Initial quantity should more than 0'))
+
+
+
         res = super(stock_picking, self).create(vals)
         i = 0
         for move in res.move_lines:
