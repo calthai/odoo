@@ -9,7 +9,10 @@ class stock_picking(models.Model):
 
     is_selected = fields.Boolean(string='Is Selected', default=False)
     is_checked = fields.Boolean(string='Is Checked', default=False)
-    is_gen_lot = fields.Boolean(string='Is Gen Lot', default=False)
+    is_gen_lot = fields.Boolean(string='Is Gen Lot', default=False, compute='get_is_gen_lot')
+    rec_ref_id = fields.Many2one('stock.picking', string='Receipt Ref')
+    int_ref_id = fields.Many2one('stock.picking', string='Internal Ref')
+    is_put_in_pack = fields.Boolean(string='Is Put in Pack',default=False)
 
     @api.multi
     def _compute_show_check_availability(self):
@@ -29,6 +32,13 @@ class stock_picking(models.Model):
                 # print('==================2')
                 picking.show_check_availability = picking.is_locked and picking.state in (
                 'confirmed', 'waiting', 'assigned') and has_moves_to_reserve
+
+    @api.depends('move_lines')
+    def get_is_gen_lot(self):
+        for picking in self:
+            if picking.move_lines and len(picking.move_lines):
+                picking.is_gen_lot = True
+
 
     @api.multi
     def gen_lot(self):
@@ -70,6 +80,8 @@ class stock_picking(models.Model):
                         # print '==================='
                         # print val
                         self.env['stock.move.line'].create(val)
+
+            self.is_put_in_pack = True
             # else:
             #     raise UserError(_('You have already pressed this button Gen Serial.'))
             #
@@ -82,6 +94,12 @@ class stock_picking(models.Model):
         if not self.move_lines and not self.move_line_ids:
             raise UserError(_('Please add some lines to move'))
 
+        ######### add restriction to assign package before validate #########
+        ######### 16/12/2018 by Jatupong ##########
+        if self.picking_type_code == 'incoming' and self.move_line_ids and not self.move_line_ids[0].result_package_id:
+            raise UserError(_('Please assign package first'))
+        #########end 16/12/2018 #################
+
         # If no lots when needed, raise error
         picking_type = self.picking_type_id
         precision_digits = self.env['decimal.precision'].precision_get('Product Unit of Measure')
@@ -90,6 +108,14 @@ class stock_picking(models.Model):
         #     print move_line.product_qty
         #     print move_line.product_id.name
 
+        #########add done qty to be 1 if lot_id is assigned
+        ######### 16/12/2018 by Jatupong ##########
+        if self.picking_type_code != 'incoming':
+            for move_line in self.move_line_ids:
+                if move_line.lot_id and move_line.product_uom_qty:
+                    move_line.qty_done = 1
+
+        #########end 16/12/2018 #################
         no_quantities_done = all(
             float_is_zero(move_line.qty_done, precision_digits=precision_digits) for move_line in self.move_line_ids)
         no_reserved_quantities = all(
@@ -186,8 +212,12 @@ class stock_picking(models.Model):
                 'location_dest_id': location_dest_id,
                 'picking_type_id': picking_type_id,
                 'is_checked': True,
+                'rec_ref_id': self.id,
                 # 'show_check_availability': show_check_availability,
             })
+
+            self.write({'int_ref_id': picking_obj.id})
+            # print (picking_obj.name)
 
             # if picking_obj.move_lines:
             #     picking_obj.move_lines.unlink()
@@ -272,7 +302,7 @@ class stock_picking(models.Model):
                 if line.auto_set:
                     found = False
                     if i > 0:
-                        for x in xrange(0, i):
+                        for x in range(0, i):
                             if line.package_id.id == line_s[x]['package_id']:
                                 print ('=========1')
                                 found = True
