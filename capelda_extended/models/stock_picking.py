@@ -2,21 +2,36 @@
 # from atom import data
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
-from odoo.tools.float_utils import float_compare, float_is_zero
+from odoo.tools.float_utils import float_compare, float_is_zero, float_round
 
 class stock_picking(models.Model):
     _inherit = 'stock.picking'
+
+    def _get_default_partner(self):
+        # print ('_get_default_partner')
+        # print (self.env.context)
+        if 'active_id' in self.env.context:
+            picking_type_ids = self.env['stock.picking.type'].browse(self.env.context['active_id'])
+            for type in picking_type_ids:
+                # print (type.code)
+                if type.code == 'incoming':
+                    default_partner_id = self.env['res.partner'].search([('name','=','Calpeda Italy')], limit=1)
+                    # print (default_partner_id.name)
+                    return default_partner_id.id
 
     is_selected = fields.Boolean(string='Is Selected', default=False)
     is_checked = fields.Boolean(string='Is Checked', default=False)
     is_gen_lot = fields.Boolean(string='Is Gen Lot', default=False, compute='get_is_gen_lot')
     rec_ref_id = fields.Many2one('stock.picking', string='Receipt Ref')
     int_ref_id = fields.Many2one('stock.picking', string='Internal Ref')
-    is_put_in_pack = fields.Boolean(string='Is Put in Pack',default=False)
+    is_put_in_pack = fields.Boolean(string='Is Put in Pack',default=False, compute='get_is_put_in_pack')
+    partner_id = fields.Many2one(
+        'res.partner', 'Partner',
+        states={'done': [('readonly', True)], 'cancel': [('readonly', True)]},  default=_get_default_partner)
 
     @api.multi
     def _compute_show_check_availability(self):
-        # print('_compute_show_check_availability====1')
+        print('_compute_show_check_availability====2')
         for picking in self:
             has_moves_to_reserve = any(
                 move.state in ('waiting', 'confirmed', 'partially_available') and
@@ -28,17 +43,58 @@ class stock_picking(models.Model):
             if picking.is_checked:
                 # print('==================1')
                 picking.show_check_availability = False
+            if picking.picking_type_code == 'incoming':
+                if not picking.is_gen_lot and picking.is_put_in_pack:
+                    picking.show_check_availability = True
+                elif picking.is_gen_lot and not picking.is_put_in_pack:
+                    picking.show_check_availability = True
+                elif not picking.is_gen_lot and not picking.is_put_in_pack:
+                    picking.show_check_availability = True
             else:
                 # print('==================2')
                 picking.show_check_availability = picking.is_locked and picking.state in (
                 'confirmed', 'waiting', 'assigned') and has_moves_to_reserve
 
+    @api.depends('move_line_ids')
+    def get_is_put_in_pack(self):
+        print ('get_is_put_in_pack')
+
+        for picking in self:
+            picking.is_put_in_pack = True
+            if picking.move_line_ids and len(picking.move_line_ids):
+                i = 0
+                for line in picking.move_line_ids:
+                    if not line.result_package_id:
+                        print ('============1')
+                        i += 1
+                print (i)
+                if i > 0:
+                    picking.is_put_in_pack = False
+                else:
+                    picking.is_put_in_pack = True
+
     @api.depends('move_lines')
     def get_is_gen_lot(self):
+        # self.is_gen_lot = True
+        # print (self.is_gen_lot)
         for picking in self:
+            picking.is_gen_lot = True
             if picking.move_lines and len(picking.move_lines):
-                picking.is_gen_lot = True
+                if len(picking.move_lines) and picking.state in ('draft','done'):
+                    picking.show_validate = False
+                else:
+                    picking.show_validate = True
 
+                i = 0
+                for pic in picking.move_lines:
+                    if not pic.quantity_done:
+                        # print('============1')
+                        i += 1
+                print(i)
+                if i > 0:
+                    picking.is_gen_lot = False
+                else:
+                    picking.is_gen_lot = True
 
     @api.multi
     def gen_lot(self):
@@ -84,7 +140,7 @@ class stock_picking(models.Model):
                         # print val
                         self.env['stock.move.line'].create(val)
 
-            self.is_put_in_pack = True
+            # self.is_put_in_pack = True
             self.action_assign()
             # else:
             #     raise UserError(_('You have already pressed this button Gen Serial.'))
@@ -206,6 +262,7 @@ class stock_picking(models.Model):
             location_dest_id = self.location_dest_id.id
             picking_type_id = picking_type_ids.id
             # show_check_availability  = False
+            location_dest_id1 = self.env['stock.location'].search([('name','=','WH')], limit=1)
 
             picking_obj = picking_obj.create({
                 # 'name': self.env['ir.sequence'].next_by_code('stock.picking') or '/',
@@ -213,7 +270,7 @@ class stock_picking(models.Model):
                 'state': state,
                 'picking_type_code': 'internal',
                 'location_id': location_id,
-                'location_dest_id': location_dest_id,
+                'location_dest_id': location_dest_id1.id,
                 'picking_type_id': picking_type_id,
                 'is_checked': True,
                 'rec_ref_id': self.id,
@@ -238,7 +295,7 @@ class stock_picking(models.Model):
                     'picking_id': line.picking_id.id,
                     'product_id': line.product_id.id,
                     'location_id': line.location_id.id,
-                    'location_dest_id': new_location_id,
+                    'location_dest_id': location_dest_id1.id,
                     'product_uom_qty': line.product_uom_qty,
                     'quantity_done': line.quantity_done,
                     'product_uom': line.product_uom.id,
@@ -257,7 +314,7 @@ class stock_picking(models.Model):
                     'picking_id': move_line.picking_id.id,
                     'product_id': move_line.product_id.id,
                     'location_id': move_line.location_dest_id.id,
-                    'location_dest_id': move_line.location_dest_id.id,
+                    'location_dest_id': location_dest_id1.id,
                     'lot_id': move_line.lot_id.id,
                     'lot_name': move_line.lot_id.name,
                     'qty_done': move_line.qty_done,
@@ -272,39 +329,43 @@ class stock_picking(models.Model):
 
             picking_obj.action_confirm()
             # picking_obj.action_assign()
-
+            self.is_selected = True
         else:
             raise UserError(_('You have already pressed this button.'))
 
-        self.is_selected = True
 
     @api.model
     def create(self, vals):
-        # print 'create=========1'
-        # print (vals.get('move_lines'))
+        print ('create=========1')
+        print (vals.get('move_lines'))
+
         if vals.get('move_lines'):
             # print self.move_lines
             location_dest_ids = []
+            location_ids = []
             for move in vals['move_lines']:
                 # print '========1'
                 if len(move) == 3:
                     location_dest_ids.append(move[2]['location_dest_id'])
+                    location_ids.append(move[2]['location_id'])
 
                 if move[2]['product_uom_qty'] <= 0:
                     raise UserError(_('Initial quantity should more than 0'))
-
-
 
         res = super(stock_picking, self).create(vals)
         i = 0
         for move in res.move_lines:
             move.location_dest_id = location_dest_ids[i]
+            move.location_id = location_ids[i]
             i = i+1
+        print (res)
         return res
 
     @api.onchange('move_line_ids','move_line_ids.location_dest_id')
     def _create_function_package(self):
         print ('_create_function_package')
+        self.show_validate = False
+        self.is_put_in_pack = True
         if self.move_line_ids:
             line_s = {}
             i = 0
@@ -337,6 +398,8 @@ class stock_picking(models.Model):
             line_s = [value for key, value in line_s.items()]
             print (line_s)
 
+
+
                     # if line.package_id.id not in package_ids:
                     #     package_ids.append(line.package_id.id)
                     #     if package_ids:
@@ -344,8 +407,32 @@ class stock_picking(models.Model):
                     #             if package == line.package_id.id:
 
 
+    def _put_in_pack(self):
+        package = False
+        for pick in self.filtered(lambda p: p.state not in ('done', 'cancel')):
+            operations = pick.move_line_ids.filtered(lambda o: o.qty_done > 0 and not o.result_package_id)
+            operation_ids = self.env['stock.move.line']
+            if operations:
+                package = self.env['stock.quant.package'].create({})
+                for operation in operations:
+                    if operation.is_gen_put:
+                        if float_compare(operation.qty_done, operation.product_uom_qty, precision_rounding=operation.product_uom_id.rounding) >= 0:
+                            operation_ids |= operation
+                        else:
+                            quantity_left_todo = float_round(
+                                operation.product_uom_qty - operation.qty_done,
+                                precision_rounding=operation.product_uom_id.rounding,
+                                rounding_method='UP')
+                            done_to_keep = operation.qty_done
+                            new_operation = operation.copy(
+                                default={'product_uom_qty': 0, 'qty_done': operation.qty_done})
+                            operation.write({'product_uom_qty': quantity_left_todo, 'qty_done': 0.0})
+                            new_operation.write({'product_uom_qty': done_to_keep})
+                            operation_ids |= new_operation
 
-
-
+                operation_ids.write({'result_package_id': package.id})
+            else:
+                raise UserError(_('Please process some quantities to put in the pack first!'))
+        return package
 
 
