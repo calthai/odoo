@@ -1,0 +1,35 @@
+<odoo>
+    <record id="stock_location_view_form_itaas_inherit" model="ir.ui.view">
+        <field name="name">stock.location.view.form.itaas</field>
+        <field name="model">stock.location</field>
+        <field name="inherit_id" ref="stock.view_location_form"/>
+        <field name="arch" type="xml">
+            <field name="return_location" position="after">
+                <field name="is_check_avilable"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="stock_location_view_tree_itaas_inherit" model="ir.ui.view">
+        <field name="name">stock.location.tree.form.itaas</field>
+        <field name="model">stock.location</field>
+        <field name="inherit_id" ref="stock.view_location_tree2"/>
+        <field name="arch" type="xml">
+            <field name="usage" position="after">
+                <field name="is_check_avilable"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="view_stock_location_search_itaas" model="ir.ui.view">
+            <field name="name">stock.location.search.itaas</field>
+            <field name="model">stock.location</field>
+            <field name="inherit_id" ref="stock.view_location_search"/>
+            <field name="arch" type="xml">
+                <filter name="inactive" position="after">
+                    <filter string="Is Valiable" name="is_valiable" domain="[('is_check_avilable','=',True)]"/>
+                    <filter string="Not Valiable" name="not_valiable" domain="[('is_check_avilable','=',False)]"/>
+                </filter>
+            </field>
+        </record>
+</odoo>
