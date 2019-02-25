@@ -18,6 +18,10 @@ class stock_picking(models.Model):
                     default_partner_id = self.env['res.partner'].search([('name','=','Calpeda Italy')], limit=1)
                     # print (default_partner_id.name)
                     return default_partner_id.id
+                elif type.code == 'outgoing':
+                    default_partner_id = self.env['res.partner'].search([('name','=','Partner')], limit=1)
+                    # print (default_partner_id.name)
+                    return default_partner_id.id
 
     is_selected = fields.Boolean(string='Is Selected', default=False)
     is_checked = fields.Boolean(string='Is Checked', default=False)
