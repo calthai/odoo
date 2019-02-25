@@ -141,7 +141,7 @@
             <!--</xpath>-->
 
             <button name="do_print_picking" position="before">
-                <button name="gen_lot" string="Gen Serial" type="object" attrs="{'invisible': ['|',('is_gen_lot','=',True),('picking_type_code', 'not in', ('incoming','internal'))]}"/>
+                <button name="gen_lot" string="Gen Serial" type="object" attrs="{'invisible': ['|',('is_gen_lot','=',True),('picking_type_code', '!=', 'incoming')]}"/>
             </button>
 
             <button name="action_toggle_is_locked" position="after">
