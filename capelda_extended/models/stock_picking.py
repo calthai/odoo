@@ -135,13 +135,14 @@ class stock_picking(models.Model):
                             'product_uom_id': product.product_uom.id,
                             'location_id': product.location_id.id,
                             'location_dest_id': product.location_dest_id.id,
+                            # 'product_qty': 1,
                             'product_uom_qty': 1,
                             'qty_done': 1,
                             'lot_id': lot_id.id,
                             'lot_name': lot_id.name,
                         }
                         # print '==================='
-                        # print val
+                        print (val)
                         self.env['stock.move.line'].create(val)
 
             # self.is_put_in_pack = True
@@ -153,6 +154,7 @@ class stock_picking(models.Model):
 
     @api.multi
     def button_validate(self):
+        super(stock_picking, self).button_validate()
         # print 'button_validate=====1'
         self.ensure_one()
         if not self.move_lines and not self.move_line_ids:
@@ -185,6 +187,8 @@ class stock_picking(models.Model):
         no_reserved_quantities = all(
             float_is_zero(move_line.product_qty, precision_rounding=move_line.product_uom_id.rounding) for move_line in
             self.move_line_ids)
+
+
         # print '========================start'
         # print no_quantities_done
         # print no_reserved_quantities
@@ -252,7 +256,8 @@ class stock_picking(models.Model):
         if self._check_backorder():
             return self.action_generate_backorder_wizard()
         self.action_done()
-        return super(stock_picking, self).button_validate()
+        return
+        # return super(stock_picking, self).button_validate()
 
     @api.multi
     def action_copy_receive(self):
